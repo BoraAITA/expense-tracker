@@ -3,7 +3,9 @@
 import { useEffect, useState } from "react";
 import { Header } from "@/components/layout/header";
 import { ExpenseForm } from "@/components/expenses/expense-form";
-import { LoadingSpinner } from "@/components/shared/loading-spinner";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Card, CardContent } from "@/components/ui/card";
+import type { CurrencyCode } from "@/lib/currency";
 
 export default function EditExpensePage({
   params,
@@ -13,6 +15,7 @@ export default function EditExpensePage({
   const [data, setData] = useState<{
     title: string;
     amount: number;
+    currency: CurrencyCode;
     description?: string | null;
     date: string;
     categoryId?: string | null;
@@ -28,7 +31,15 @@ export default function EditExpensePage({
     return (
       <>
         <Header title="Gider Düzenle" />
-        <LoadingSpinner />
+        <div className="p-4 sm:p-6">
+          <Card>
+            <CardContent className="space-y-4 pt-6">
+              <Skeleton className="h-10 w-full" />
+              <Skeleton className="h-10 w-full" />
+              <Skeleton className="h-10 w-full" />
+            </CardContent>
+          </Card>
+        </div>
       </>
     );
   }
@@ -36,7 +47,7 @@ export default function EditExpensePage({
   return (
     <>
       <Header title="Gider Düzenle" description={data.title} />
-      <div className="p-6">
+      <div className="p-4 sm:p-6">
         <ExpenseForm expenseId={params.id} initialData={data} />
       </div>
     </>

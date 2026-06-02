@@ -40,7 +40,7 @@ export default function CategoriesPage() {
           </Button>
         }
       />
-      <div className="p-6">
+      <div className="p-4 sm:p-6">
         {loading ? (
           <LoadingSpinner />
         ) : (

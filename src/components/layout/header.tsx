@@ -1,3 +1,4 @@
+import { MobileSidebar } from "./mobile-sidebar";
 import { ThemeToggle } from "./theme-toggle";
 import { UserMenu } from "./user-menu";
 
@@ -9,17 +10,20 @@ interface HeaderProps {
 
 export function Header({ title, description, action }: HeaderProps) {
   return (
-    <header className="flex h-16 items-center justify-between border-b bg-background px-6">
-      <div className="flex items-center gap-4">
-        <div>
-          <h1 className="text-xl font-semibold">{title}</h1>
+    <header className="sticky top-0 z-40 flex min-h-16 flex-wrap items-center justify-between gap-3 border-b bg-background/95 px-4 py-3 backdrop-blur supports-[backdrop-filter]:bg-background/80 sm:px-6">
+      <div className="flex min-w-0 flex-1 items-center gap-3">
+        <MobileSidebar />
+        <div className="min-w-0">
+          <h1 className="truncate text-lg font-semibold sm:text-xl">{title}</h1>
           {description && (
-            <p className="text-sm text-muted-foreground">{description}</p>
+            <p className="truncate text-sm text-muted-foreground">
+              {description}
+            </p>
           )}
         </div>
-        {action}
       </div>
-      <div className="flex items-center gap-2">
+      <div className="flex shrink-0 items-center gap-2">
+        {action && <div className="flex items-center">{action}</div>}
         <ThemeToggle />
         <UserMenu />
       </div>

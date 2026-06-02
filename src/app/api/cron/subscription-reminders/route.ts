@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { sendSubscriptionReminder } from "@/lib/mail";
-import { decimalToNumber, formatCurrency } from "@/lib/utils";
+import { decimalToNumber, formatCurrency, parseCurrency } from "@/lib/utils";
 import { addDays } from "date-fns";
 
 const intervalLabels: Record<string, string> = {
@@ -46,7 +46,10 @@ export async function POST(request: NextRequest) {
 
     const success = await sendSubscriptionReminder(sub.user.email, {
       name: sub.name,
-      amount: formatCurrency(decimalToNumber(sub.amount)),
+      amount: formatCurrency(
+        decimalToNumber(sub.amount),
+        parseCurrency(sub.currency)
+      ),
       nextDueDate: sub.nextDueDate,
       interval: intervalLabels[sub.interval] || sub.interval,
     });

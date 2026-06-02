@@ -47,7 +47,7 @@ export default function ExpensesPage() {
           </Button>
         }
       />
-      <div className="flex-1 space-y-6 p-6">
+      <div className="flex-1 space-y-6 p-4 sm:p-6">
         <ExpenseFilters
           search={search}
           onSearchChange={setSearch}

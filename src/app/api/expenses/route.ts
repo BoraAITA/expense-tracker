@@ -2,30 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireAuth } from "@/lib/api-auth";
 import { expenseCreateSchema, expenseQuerySchema } from "@/lib/validators/expense";
-import { decimalToNumber } from "@/lib/utils";
+import { serializeExpenseWithCategory } from "@/lib/dashboard-stats";
 import { ZodError } from "zod";
-
-function serializeExpense(expense: {
-  id: string;
-  title: string;
-  amount: { toString(): string };
-  description: string | null;
-  date: Date;
-  categoryId: string | null;
-  createdAt: Date;
-  category?: { id: string; name: string; color: string } | null;
-}) {
-  return {
-    id: expense.id,
-    title: expense.title,
-    amount: decimalToNumber(expense.amount),
-    description: expense.description,
-    date: expense.date.toISOString(),
-    categoryId: expense.categoryId,
-    category: expense.category ?? null,
-    createdAt: expense.createdAt.toISOString(),
-  };
-}
 
 export async function GET(request: NextRequest) {
   const { session, error } = await requireAuth();
@@ -69,7 +47,7 @@ export async function GET(request: NextRequest) {
     ]);
 
     return NextResponse.json({
-      data: expenses.map(serializeExpense),
+      data: expenses.map(serializeExpenseWithCategory),
       total,
       page: query.page,
       limit: query.limit,
@@ -107,6 +85,7 @@ export async function POST(request: NextRequest) {
       data: {
         title: data.title,
         amount: data.amount,
+        currency: data.currency,
         description: data.description ?? null,
         date: data.date,
         categoryId: data.categoryId ?? null,
@@ -115,7 +94,9 @@ export async function POST(request: NextRequest) {
       include: { category: true },
     });
 
-    return NextResponse.json(serializeExpense(expense), { status: 201 });
+    return NextResponse.json(serializeExpenseWithCategory(expense), {
+      status: 201,
+    });
   } catch (e) {
     if (e instanceof ZodError) {
       return NextResponse.json(

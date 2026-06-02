@@ -2,8 +2,40 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireAuth } from "@/lib/api-auth";
 import { decimalToNumber } from "@/lib/utils";
+import type { CurrencyCode } from "@/lib/currency";
+import {
+  emptyCurrencyTotals,
+  addToCurrencyTotals,
+  sumConvertedTry,
+  monthlySubscriptionAmount,
+  serializeExpenseWithCategory,
+  serializeSubscription,
+} from "@/lib/dashboard-stats";
 import { startOfMonth, endOfMonth, subMonths, format } from "date-fns";
 import { tr } from "date-fns/locale";
+
+async function aggregateExpensesByCurrency(
+  userId: string,
+  dateFilter?: { gte: Date; lte: Date }
+) {
+  const totals = emptyCurrencyTotals();
+  const expenses = await prisma.expense.findMany({
+    where: {
+      userId,
+      ...(dateFilter ? { date: dateFilter } : {}),
+    },
+    select: { amount: true, currency: true },
+  });
+
+  for (const e of expenses) {
+    addToCurrencyTotals(
+      totals,
+      e.currency as CurrencyCode,
+      decimalToNumber(e.amount)
+    );
+  }
+  return totals;
+}
 
 export async function GET() {
   const { session, error } = await requireAuth();
@@ -14,18 +46,12 @@ export async function GET() {
   const monthStart = startOfMonth(now);
   const monthEnd = endOfMonth(now);
 
-  const [allExpenses, monthlyExpenses, activeSubscriptions, recentExpenses] =
+  const [totalExpensesByCurrency, monthlyExpensesByCurrency, activeSubscriptions, recentExpenses, allSubscriptions] =
     await Promise.all([
-      prisma.expense.aggregate({
-        where: { userId },
-        _sum: { amount: true },
-      }),
-      prisma.expense.aggregate({
-        where: {
-          userId,
-          date: { gte: monthStart, lte: monthEnd },
-        },
-        _sum: { amount: true },
+      aggregateExpensesByCurrency(userId),
+      aggregateExpensesByCurrency(userId, {
+        gte: monthStart,
+        lte: monthEnd,
       }),
       prisma.subscription.findMany({
         where: { userId, status: "ACTIVE" },
@@ -36,50 +62,54 @@ export async function GET() {
         orderBy: { date: "desc" },
         take: 5,
       }),
+      prisma.subscription.findMany({
+        where: { userId, status: "ACTIVE" },
+        orderBy: { nextDueDate: "asc" },
+        take: 5,
+      }),
     ]);
+
+  const monthlySubscriptionCostByCurrency = emptyCurrencyTotals();
+  for (const sub of activeSubscriptions) {
+    const monthly = monthlySubscriptionAmount(
+      decimalToNumber(sub.amount),
+      sub.interval
+    );
+    addToCurrencyTotals(
+      monthlySubscriptionCostByCurrency,
+      sub.currency as CurrencyCode,
+      monthly
+    );
+  }
 
   const monthlyChart = [];
   for (let i = 5; i >= 0; i--) {
     const d = subMonths(now, i);
     const start = startOfMonth(d);
     const end = endOfMonth(d);
-    const agg = await prisma.expense.aggregate({
-      where: {
-        userId,
-        date: { gte: start, lte: end },
-      },
-      _sum: { amount: true },
+    const byCurrency = await aggregateExpensesByCurrency(userId, {
+      gte: start,
+      lte: end,
     });
     monthlyChart.push({
       month: format(d, "MMM yyyy", { locale: tr }),
-      amount: decimalToNumber(agg._sum.amount ?? 0),
+      byCurrency,
+      totalTry: sumConvertedTry(byCurrency),
     });
   }
 
-  const monthlySubscriptionCost = activeSubscriptions.reduce((sum, sub) => {
-    const amount = decimalToNumber(sub.amount);
-    if (sub.interval === "YEARLY") return sum + amount / 12;
-    if (sub.interval === "WEEKLY") return sum + amount * 4;
-    return sum + amount;
-  }, 0);
-
   return NextResponse.json({
-    totalExpenses: decimalToNumber(allExpenses._sum.amount ?? 0),
-    monthlyExpenses: decimalToNumber(monthlyExpenses._sum.amount ?? 0),
+    totalExpensesByCurrency,
+    monthlyExpensesByCurrency,
+    totalExpensesConvertedTry: sumConvertedTry(totalExpensesByCurrency),
+    monthlyExpensesConvertedTry: sumConvertedTry(monthlyExpensesByCurrency),
     activeSubscriptions: activeSubscriptions.length,
-    monthlySubscriptionCost,
+    monthlySubscriptionCostByCurrency,
+    monthlySubscriptionCostConvertedTry: sumConvertedTry(
+      monthlySubscriptionCostByCurrency
+    ),
     monthlyChart,
-    recentExpenses: recentExpenses.map((e) => ({
-      id: e.id,
-      title: e.title,
-      amount: decimalToNumber(e.amount),
-      description: e.description,
-      date: e.date.toISOString(),
-      categoryId: e.categoryId,
-      category: e.category
-        ? { id: e.category.id, name: e.category.name, color: e.category.color }
-        : null,
-      createdAt: e.createdAt.toISOString(),
-    })),
+    recentExpenses: recentExpenses.map(serializeExpenseWithCategory),
+    upcomingSubscriptions: allSubscriptions.map(serializeSubscription),
   });
 }

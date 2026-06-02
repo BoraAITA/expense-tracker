@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import { ExpenseWithCategory } from "@/types";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, Receipt } from "lucide-react";
 import { EmptyState } from "@/components/shared/empty-state";
 
 interface RecentExpensesProps {
@@ -15,10 +15,10 @@ interface RecentExpensesProps {
 
 export function RecentExpenses({ expenses }: RecentExpensesProps) {
   return (
-    <Card>
-      <CardHeader className="flex flex-row items-center justify-between">
-        <CardTitle>Son Giderler</CardTitle>
-        <Button variant="ghost" size="sm" asChild>
+    <Card className="shadow-sm transition-shadow hover:shadow-md">
+      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
+        <CardTitle className="text-lg">Son Giderler</CardTitle>
+        <Button variant="ghost" size="sm" className="min-h-10" asChild>
           <Link href="/expenses">
             Tümünü gör <ArrowRight className="ml-1 h-4 w-4" />
           </Link>
@@ -26,17 +26,21 @@ export function RecentExpenses({ expenses }: RecentExpensesProps) {
       </CardHeader>
       <CardContent>
         {expenses.length === 0 ? (
-          <EmptyState title="Gider yok" description="Henüz gider eklenmemiş." />
+          <EmptyState
+            title="Gider yok"
+            description="Henüz gider eklenmemiş."
+            icon={Receipt}
+          />
         ) : (
-          <div className="space-y-4">
+          <div className="space-y-3">
             {expenses.map((expense) => (
               <div
                 key={expense.id}
-                className="flex items-center justify-between border-b pb-3 last:border-0 last:pb-0"
+                className="flex items-center justify-between gap-3 rounded-lg border p-3 transition-colors hover:bg-muted/50"
               >
-                <div className="space-y-1">
-                  <p className="font-medium">{expense.title}</p>
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <div className="min-w-0 space-y-1">
+                  <p className="truncate font-medium">{expense.title}</p>
+                  <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
                     <span>{formatDate(expense.date)}</span>
                     {expense.category && (
                       <Badge
@@ -51,8 +55,8 @@ export function RecentExpenses({ expenses }: RecentExpensesProps) {
                     )}
                   </div>
                 </div>
-                <span className="font-semibold">
-                  {formatCurrency(expense.amount)}
+                <span className="shrink-0 font-semibold">
+                  {formatCurrency(expense.amount, expense.currency)}
                 </span>
               </div>
             ))}

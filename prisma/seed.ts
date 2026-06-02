@@ -54,6 +54,7 @@ async function main() {
         {
           title: "Market alışverişi",
           amount: 450.5,
+          currency: "TRY",
           description: "Haftalık market",
           date: new Date(),
           userId: admin.id,
@@ -62,6 +63,7 @@ async function main() {
         {
           title: "Elektrik faturası",
           amount: 320,
+          currency: "TRY",
           date: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
           userId: admin.id,
         },
@@ -78,6 +80,7 @@ async function main() {
       data: {
         name: "Netflix",
         amount: 149.99,
+        currency: "TRY",
         interval: "MONTHLY",
         status: "ACTIVE",
         nextDueDate: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000),

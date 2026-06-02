@@ -2,28 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireAuth } from "@/lib/api-auth";
 import { subscriptionUpdateSchema } from "@/lib/validators/subscription";
-import { decimalToNumber } from "@/lib/utils";
+import { serializeSubscription } from "@/lib/dashboard-stats";
 import { ZodError } from "zod";
-
-function serialize(sub: {
-  id: string;
-  name: string;
-  amount: { toString(): string };
-  interval: string;
-  status: string;
-  nextDueDate: Date;
-  reminderDays: number;
-}) {
-  return {
-    id: sub.id,
-    name: sub.name,
-    amount: decimalToNumber(sub.amount),
-    interval: sub.interval,
-    status: sub.status,
-    nextDueDate: sub.nextDueDate.toISOString(),
-    reminderDays: sub.reminderDays,
-  };
-}
 
 export async function PATCH(
   request: NextRequest,
@@ -49,6 +29,8 @@ export async function PATCH(
       data: {
         ...(data.name !== undefined && { name: data.name }),
         ...(data.amount !== undefined && { amount: data.amount }),
+        ...(data.currency !== undefined && { currency: data.currency }),
+        ...(data.logoUrl !== undefined && { logoUrl: data.logoUrl }),
         ...(data.interval !== undefined && { interval: data.interval }),
         ...(data.status !== undefined && { status: data.status }),
         ...(data.nextDueDate !== undefined && { nextDueDate: data.nextDueDate }),
@@ -56,7 +38,7 @@ export async function PATCH(
       },
     });
 
-    return NextResponse.json(serialize(subscription));
+    return NextResponse.json(serializeSubscription(subscription));
   } catch (e) {
     if (e instanceof ZodError) {
       return NextResponse.json(

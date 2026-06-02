@@ -55,8 +55,8 @@ export default function SettingsPage() {
   return (
     <>
       <Header title="Ayarlar" description="Hesap ve sistem ayarları" />
-      <div className="flex-1 space-y-6 p-6">
-        <Card>
+      <div className="flex-1 space-y-6 p-4 sm:p-6">
+        <Card className="shadow-sm">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Shield className="h-5 w-5" />
@@ -88,7 +88,7 @@ export default function SettingsPage() {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="shadow-sm">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Mail className="h-5 w-5" />

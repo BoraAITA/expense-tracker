@@ -49,7 +49,7 @@ export function CategoryList({ categories, onChanged }: CategoryListProps) {
         {categories.map((cat) => (
           <div
             key={cat.id}
-            className="flex items-center justify-between rounded-lg border p-4"
+            className="flex items-center justify-between rounded-xl border bg-card p-4 shadow-sm transition-shadow hover:shadow-md"
           >
             <div className="flex items-center gap-3">
               <div
@@ -67,6 +67,7 @@ export function CategoryList({ categories, onChanged }: CategoryListProps) {
               <Button
                 variant="ghost"
                 size="icon"
+                className="min-h-10 min-w-10"
                 onClick={() => setEditCategory(cat)}
               >
                 <Pencil className="h-4 w-4" />
@@ -74,6 +75,7 @@ export function CategoryList({ categories, onChanged }: CategoryListProps) {
               <Button
                 variant="ghost"
                 size="icon"
+                className="min-h-10 min-w-10"
                 onClick={() => setDeleteId(cat.id)}
               >
                 <Trash2 className="h-4 w-4 text-destructive" />

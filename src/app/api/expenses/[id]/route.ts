@@ -2,30 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireAuth } from "@/lib/api-auth";
 import { expenseUpdateSchema } from "@/lib/validators/expense";
-import { decimalToNumber } from "@/lib/utils";
+import { serializeExpenseWithCategory } from "@/lib/dashboard-stats";
 import { ZodError } from "zod";
-
-function serializeExpense(expense: {
-  id: string;
-  title: string;
-  amount: { toString(): string };
-  description: string | null;
-  date: Date;
-  categoryId: string | null;
-  createdAt: Date;
-  category?: { id: string; name: string; color: string } | null;
-}) {
-  return {
-    id: expense.id,
-    title: expense.title,
-    amount: decimalToNumber(expense.amount),
-    description: expense.description,
-    date: expense.date.toISOString(),
-    categoryId: expense.categoryId,
-    category: expense.category ?? null,
-    createdAt: expense.createdAt.toISOString(),
-  };
-}
 
 export async function GET(
   _request: NextRequest,
@@ -43,7 +21,7 @@ export async function GET(
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
-  return NextResponse.json(serializeExpense(expense));
+  return NextResponse.json(serializeExpenseWithCategory(expense));
 }
 
 export async function PATCH(
@@ -79,6 +57,7 @@ export async function PATCH(
       data: {
         ...(data.title !== undefined && { title: data.title }),
         ...(data.amount !== undefined && { amount: data.amount }),
+        ...(data.currency !== undefined && { currency: data.currency }),
         ...(data.description !== undefined && { description: data.description }),
         ...(data.date !== undefined && { date: data.date }),
         ...(data.categoryId !== undefined && { categoryId: data.categoryId }),
@@ -86,7 +65,7 @@ export async function PATCH(
       include: { category: true },
     });
 
-    return NextResponse.json(serializeExpense(expense));
+    return NextResponse.json(serializeExpenseWithCategory(expense));
   } catch (e) {
     if (e instanceof ZodError) {
       return NextResponse.json(

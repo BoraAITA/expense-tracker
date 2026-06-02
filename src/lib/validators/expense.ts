@@ -1,8 +1,11 @@
 import { z } from "zod";
 
+const currencyEnum = z.enum(["TRY", "USD", "EUR"]);
+
 export const expenseCreateSchema = z.object({
   title: z.string().min(1, "Başlık gerekli").max(200),
   amount: z.coerce.number().positive("Tutar pozitif olmalı"),
+  currency: currencyEnum.default("TRY"),
   description: z.string().max(1000).optional().nullable(),
   date: z.coerce.date(),
   categoryId: z.string().cuid().optional().nullable(),

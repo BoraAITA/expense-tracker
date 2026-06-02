@@ -24,6 +24,12 @@ enum SubscriptionStatus {
   CANCELLED
 }
 
+enum Currency {
+  TRY
+  USD
+  EUR
+}
+
 model User {
   id            String         @id @default(cuid())
   username      String         @unique
@@ -59,6 +65,7 @@ model Expense {
   id          String    @id @default(cuid())
   title       String
   amount      Decimal   @db.Decimal(12, 2)
+  currency    Currency  @default(TRY)
   description String?
   date        DateTime  @default(now())
   userId      String
@@ -76,6 +83,8 @@ model Subscription {
   id           String               @id @default(cuid())
   name         String
   amount       Decimal              @db.Decimal(12, 2)
+  currency     Currency             @default(TRY)
+  logoUrl      String?
   interval     SubscriptionInterval @default(MONTHLY)
   status       SubscriptionStatus   @default(ACTIVE)
   nextDueDate  DateTime
