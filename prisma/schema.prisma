@@ -1,0 +1,90 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  USER
+}
+
+enum SubscriptionInterval {
+  MONTHLY
+  YEARLY
+  WEEKLY
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  PAUSED
+  CANCELLED
+}
+
+model User {
+  id            String         @id @default(cuid())
+  username      String         @unique
+  passwordHash  String
+  name          String?
+  email         String?        @unique
+  role          Role           @default(USER)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  expenses      Expense[]
+  subscriptions Subscription[]
+  categories    Category[]
+}
+
+model Category {
+  id        String    @id @default(cuid())
+  name      String
+  color     String    @default("#6366f1")
+  icon      String?
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  expenses  Expense[]
+
+  @@unique([userId, name])
+  @@index([userId])
+}
+
+model Expense {
+  id          String    @id @default(cuid())
+  title       String
+  amount      Decimal   @db.Decimal(12, 2)
+  description String?
+  date        DateTime  @default(now())
+  userId      String
+  categoryId  String?
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category    Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([userId, date])
+  @@index([categoryId])
+}
+
+model Subscription {
+  id           String               @id @default(cuid())
+  name         String
+  amount       Decimal              @db.Decimal(12, 2)
+  interval     SubscriptionInterval @default(MONTHLY)
+  status       SubscriptionStatus   @default(ACTIVE)
+  nextDueDate  DateTime
+  reminderDays Int                  @default(3)
+  userId       String
+  user         User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt    DateTime             @default(now())
+  updatedAt    DateTime             @updatedAt
+
+  @@index([userId, status])
+  @@index([nextDueDate])
+}
