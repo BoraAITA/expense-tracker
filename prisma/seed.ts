@@ -90,6 +90,17 @@ async function main() {
     });
   }
 
+  if (admin.email) {
+    await prisma.setting.upsert({
+      where: { key: "notification_email" },
+      update: {},
+      create: {
+        key: "notification_email",
+        value: admin.email,
+      },
+    });
+  }
+
   console.log("Seed completed: admin user and sample data ready");
 }
 

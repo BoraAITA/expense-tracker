@@ -54,3 +54,12 @@ export interface SubscriptionItem {
   nextDueDate: string;
   reminderDays: number;
 }
+
+export interface NotificationLogItem {
+  id: string;
+  to: string;
+  subject: string;
+  status: "SENT" | "FAILED";
+  sentAt: string;
+  error: string | null;
+}

@@ -9,6 +9,7 @@ import {
   Repeat,
   Settings,
   Wallet,
+  Bell,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -17,6 +18,7 @@ export const navItems = [
   { href: "/expenses", label: "Giderler", icon: Receipt },
   { href: "/categories", label: "Kategoriler", icon: Tags },
   { href: "/subscriptions", label: "Abonelikler", icon: Repeat },
+  { href: "/notifications", label: "Bildirimler", icon: Bell },
   { href: "/settings", label: "Ayarlar", icon: Settings },
 ];
 

@@ -1,4 +1,6 @@
 import nodemailer from "nodemailer";
+import { prisma } from "@/lib/prisma";
+import type { NotificationStatus } from "@prisma/client";
 
 const smtpHost = process.env.SMTP_HOST;
 const smtpPort = parseInt(process.env.SMTP_PORT || "587", 10);
@@ -22,6 +24,73 @@ function getTransporter() {
   });
 }
 
+async function logNotification(params: {
+  to: string;
+  subject: string;
+  body: string;
+  status: NotificationStatus;
+  error?: string | null;
+}) {
+  await prisma.notificationLog.create({
+    data: {
+      to: params.to,
+      subject: params.subject,
+      body: params.body,
+      status: params.status,
+      error: params.error ?? null,
+    },
+  });
+}
+
+async function sendAndLog(params: {
+  to: string;
+  subject: string;
+  body: string;
+  html: string;
+}): Promise<boolean> {
+  const transporter = getTransporter();
+
+  if (!transporter) {
+    console.warn("SMTP not configured, skipping email");
+    await logNotification({
+      to: params.to,
+      subject: params.subject,
+      body: params.body,
+      status: "FAILED",
+      error: "SMTP yapılandırması eksik",
+    });
+    return false;
+  }
+
+  try {
+    await transporter.sendMail({
+      from: smtpFrom,
+      to: params.to,
+      subject: params.subject,
+      html: params.html,
+    });
+    await logNotification({
+      to: params.to,
+      subject: params.subject,
+      body: params.body,
+      status: "SENT",
+    });
+    return true;
+  } catch (error) {
+    const message =
+      error instanceof Error ? error.message : "Bilinmeyen gönderim hatası";
+    console.error("Failed to send email:", error);
+    await logNotification({
+      to: params.to,
+      subject: params.subject,
+      body: params.body,
+      status: "FAILED",
+      error: message,
+    });
+    return false;
+  }
+}
+
 export interface SubscriptionReminderData {
   name: string;
   amount: string;
@@ -33,12 +102,6 @@ export async function sendSubscriptionReminder(
   email: string,
   subscription: SubscriptionReminderData
 ): Promise<boolean> {
-  const transporter = getTransporter();
-  if (!transporter) {
-    console.warn("SMTP not configured, skipping email");
-    return false;
-  }
-
   const dueDate = new Intl.DateTimeFormat("tr-TR", {
     day: "numeric",
     month: "long",
@@ -68,37 +131,16 @@ export async function sendSubscriptionReminder(
     </div>
   `;
 
-  try {
-    await transporter.sendMail({
-      from: smtpFrom,
-      to: email,
-      subject: `Abonelik hatırlatması: ${subscription.name}`,
-      html,
-    });
-    return true;
-  } catch (error) {
-    console.error("Failed to send subscription reminder:", error);
-    return false;
-  }
+  const subject = `Abonelik hatırlatması: ${subscription.name}`;
+  const body = `Abonelik hatırlatması: ${subscription.name} - ${subscription.amount} - Sonraki ödeme: ${dueDate}`;
+
+  return sendAndLog({ to: email, subject, body, html });
 }
 
 export async function sendTestEmail(to: string): Promise<boolean> {
-  const transporter = getTransporter();
-  if (!transporter) {
-    console.warn("SMTP not configured");
-    return false;
-  }
+  const subject = "Expense Tracker - Test E-postası";
+  const body = "SMTP bağlantısı test e-postası";
+  const html = "<p>SMTP bağlantısı başarılı!</p>";
 
-  try {
-    await transporter.sendMail({
-      from: smtpFrom,
-      to,
-      subject: "Expense Tracker - Test E-postası",
-      html: "<p>SMTP bağlantısı başarılı!</p>",
-    });
-    return true;
-  } catch (error) {
-    console.error("Failed to send test email:", error);
-    return false;
-  }
+  return sendAndLog({ to, subject, body, html });
 }

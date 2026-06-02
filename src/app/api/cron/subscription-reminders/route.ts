@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { sendSubscriptionReminder } from "@/lib/mail";
+import { getNotificationEmail } from "@/lib/settings";
 import { decimalToNumber, formatCurrency, parseCurrency } from "@/lib/utils";
 import { addDays } from "date-fns";
 
@@ -21,6 +22,14 @@ export async function POST(request: NextRequest) {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
+  const notificationEmail = await getNotificationEmail();
+  if (!notificationEmail) {
+    return NextResponse.json(
+      { error: "Bildirim e-postası yapılandırılmamış" },
+      { status: 400 }
+    );
+  }
+
   const subscriptions = await prisma.subscription.findMany({
     where: { status: "ACTIVE" },
     include: { user: true },
@@ -39,12 +48,7 @@ export async function POST(request: NextRequest) {
       continue;
     }
 
-    if (!sub.user.email) {
-      skipped++;
-      continue;
-    }
-
-    const success = await sendSubscriptionReminder(sub.user.email, {
+    const success = await sendSubscriptionReminder(notificationEmail, {
       name: sub.name,
       amount: formatCurrency(
         decimalToNumber(sub.amount),

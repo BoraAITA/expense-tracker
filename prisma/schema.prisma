@@ -97,3 +97,27 @@ model Subscription {
   @@index([userId, status])
   @@index([nextDueDate])
 }
+
+enum NotificationStatus {
+  SENT
+  FAILED
+}
+
+model Setting {
+  key       String   @id
+  value     String
+  updatedAt DateTime @updatedAt
+}
+
+model NotificationLog {
+  id        String             @id @default(cuid())
+  to        String
+  subject   String
+  body      String             @db.Text
+  status    NotificationStatus
+  sentAt    DateTime           @default(now())
+  error     String?
+
+  @@index([sentAt])
+  @@index([status])
+}
