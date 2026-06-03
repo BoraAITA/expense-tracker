@@ -9,9 +9,38 @@ export const expenseCreateSchema = z.object({
   description: z.string().max(1000).optional().nullable(),
   date: z.coerce.date(),
   categoryId: z.string().cuid().optional().nullable(),
-});
+  installmentTotal: z.coerce.number().int().min(2).max(60).optional().nullable(),
+  installmentCurrent: z.coerce.number().int().min(1).max(60).optional().nullable(),
+}).refine(
+  (data) => {
+    const hasTotal = data.installmentTotal != null;
+    const hasCurrent = data.installmentCurrent != null;
+    if (hasTotal !== hasCurrent) return false;
+    if (hasTotal && hasCurrent && data.installmentCurrent! > data.installmentTotal!) return false;
+    return true;
+  },
+  { message: "Taksit bilgileri tutarsız" }
+);
 
-export const expenseUpdateSchema = expenseCreateSchema.partial();
+export const expenseUpdateSchema = z.object({
+  title: z.string().min(1, "Başlık gerekli").max(200).optional(),
+  amount: z.coerce.number().positive("Tutar pozitif olmalı").optional(),
+  currency: currencyEnum.optional(),
+  description: z.string().max(1000).optional().nullable(),
+  date: z.coerce.date().optional(),
+  categoryId: z.string().cuid().optional().nullable(),
+  installmentTotal: z.coerce.number().int().min(2).max(60).optional().nullable(),
+  installmentCurrent: z.coerce.number().int().min(1).max(60).optional().nullable(),
+}).refine(
+  (data) => {
+    const hasTotal = data.installmentTotal != null;
+    const hasCurrent = data.installmentCurrent != null;
+    if (hasTotal !== hasCurrent) return false;
+    if (hasTotal && hasCurrent && data.installmentCurrent! > data.installmentTotal!) return false;
+    return true;
+  },
+  { message: "Taksit bilgileri tutarsız" }
+);
 
 export const expenseQuerySchema = z.object({
   search: z.string().optional(),

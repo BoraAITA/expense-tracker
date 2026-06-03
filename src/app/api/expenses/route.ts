@@ -89,6 +89,8 @@ export async function POST(request: NextRequest) {
         description: data.description ?? null,
         date: data.date,
         categoryId: data.categoryId ?? null,
+        installmentTotal: data.installmentTotal ?? null,
+        installmentCurrent: data.installmentCurrent ?? null,
         userId,
       },
       include: { category: true },

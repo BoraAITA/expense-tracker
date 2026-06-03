@@ -19,6 +19,8 @@ export default function EditExpensePage({
     description?: string | null;
     date: string;
     categoryId?: string | null;
+    installmentTotal?: number | null;
+    installmentCurrent?: number | null;
   } | null>(null);
 
   useEffect(() => {

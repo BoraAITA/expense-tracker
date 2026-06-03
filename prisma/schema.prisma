@@ -68,6 +68,8 @@ model Expense {
   currency    Currency  @default(TRY)
   description String?
   date        DateTime  @default(now())
+  installmentTotal  Int?
+  installmentCurrent Int?
   userId      String
   categoryId  String?
   user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)

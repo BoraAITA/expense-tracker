@@ -20,6 +20,8 @@ import type { CurrencyCode } from "@/lib/currency";
 import { CURRENCY_SYMBOLS } from "@/lib/currency";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
+import { CreditCard, Receipt } from "lucide-react";
+import { Separator } from "@/components/ui/separator";
 
 interface ExpenseFormProps {
   expenseId?: string;
@@ -30,6 +32,8 @@ interface ExpenseFormProps {
     description?: string | null;
     date: string;
     categoryId?: string | null;
+    installmentTotal?: number | null;
+    installmentCurrent?: number | null;
   };
 }
 
@@ -45,16 +49,23 @@ export function ExpenseForm({ expenseId, initialData }: ExpenseFormProps) {
   const [currency, setCurrency] = useState<CurrencyCode>(
     initialData?.currency || "TRY"
   );
-  const [description, setDescription] = useState(
-    initialData?.description || ""
-  );
+  const [description, setDescription] = useState(initialData?.description || "");
   const [date, setDate] = useState(
     initialData?.date
       ? format(new Date(initialData.date), "yyyy-MM-dd")
       : format(new Date(), "yyyy-MM-dd")
   );
-  const [categoryId, setCategoryId] = useState(
-    initialData?.categoryId || "none"
+  const [categoryId, setCategoryId] = useState(initialData?.categoryId || "none");
+
+  // Installment state
+  const [isInstallment, setIsInstallment] = useState(
+    initialData?.installmentTotal != null
+  );
+  const [installmentTotal, setInstallmentTotal] = useState(
+    initialData?.installmentTotal?.toString() || "3"
+  );
+  const [installmentCurrent, setInstallmentCurrent] = useState(
+    initialData?.installmentCurrent?.toString() || "1"
   );
 
   useEffect(() => {
@@ -67,7 +78,7 @@ export function ExpenseForm({ expenseId, initialData }: ExpenseFormProps) {
     e.preventDefault();
     setLoading(true);
 
-    const body = {
+    const body: Record<string, unknown> = {
       title,
       amount: parseFloat(amount),
       currency,
@@ -75,6 +86,15 @@ export function ExpenseForm({ expenseId, initialData }: ExpenseFormProps) {
       date: new Date(date).toISOString(),
       categoryId: categoryId === "none" ? null : categoryId,
     };
+
+    // Add installment data if enabled
+    if (isInstallment) {
+      body.installmentTotal = parseInt(installmentTotal);
+      body.installmentCurrent = parseInt(installmentCurrent);
+    } else {
+      body.installmentTotal = null;
+      body.installmentCurrent = null;
+    }
 
     try {
       const url = expenseId ? `/api/expenses/${expenseId}` : "/api/expenses";
@@ -161,6 +181,88 @@ export function ExpenseForm({ expenseId, initialData }: ExpenseFormProps) {
               </SelectContent>
             </Select>
           </div>
+
+          {/* INSTALLMENT SECTION */}
+          <div className="rounded-lg border bg-muted/30 p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <CreditCard className="h-4 w-4 text-muted-foreground" />
+                <Label className="text-sm font-medium">Kredi Kartı Taksiti</Label>
+              </div>
+              <button
+                type="button"
+                className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 ${
+                  isInstallment ? "bg-primary" : "bg-input"
+                }`}
+                onClick={() => setIsInstallment(!isInstallment)}
+              >
+                <span
+                  className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-background shadow-lg ring-0 transition duration-200 ease-in-out ${
+                    isInstallment ? "translate-x-5" : "translate-x-0"
+                  }`}
+                />
+              </button>
+            </div>
+
+            {isInstallment && (
+              <>
+                <Separator />
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="installment-total">Toplam Taksit</Label>
+                    <Select
+                      value={installmentTotal}
+                      onValueChange={setInstallmentTotal}
+                    >
+                      <SelectTrigger className="min-h-11">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {Array.from({ length: 12 }, (_, i) => i + 2).map((n) => (
+                          <SelectItem key={n} value={n.toString()}>
+                            {n} Taksit
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="installment-current">Kaçıncı Taksit</Label>
+                    <Select
+                      value={installmentCurrent}
+                      onValueChange={setInstallmentCurrent}
+                    >
+                      <SelectTrigger className="min-h-11">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {Array.from(
+                          { length: parseInt(installmentTotal) || 2 },
+                          (_, i) => i + 1
+                        ).map((n) => (
+                          <SelectItem key={n} value={n.toString()}>
+                            {n} / {installmentTotal}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <Receipt className="h-3 w-3" />
+                  <span>
+                    Tutar taksit sayısına bölünecektir (
+                    {CURRENCY_SYMBOLS[currency]}{" "}
+                    {amount && installmentTotal
+                      ? (parseFloat(amount) / parseInt(installmentTotal)).toFixed(2)
+                      : "—"}{" "}
+                    / taksit)
+                  </span>
+                </div>
+              </>
+            )}
+          </div>
+
           <div className="space-y-2">
             <Label htmlFor="description">Açıklama</Label>
             <Textarea

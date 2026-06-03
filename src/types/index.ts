@@ -27,6 +27,8 @@ export interface ExpenseWithCategory {
   description: string | null;
   date: string;
   categoryId: string | null;
+  installmentTotal: number | null;
+  installmentCurrent: number | null;
   category: {
     id: string;
     name: string;

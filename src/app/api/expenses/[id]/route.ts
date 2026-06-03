@@ -61,6 +61,8 @@ export async function PATCH(
         ...(data.description !== undefined && { description: data.description }),
         ...(data.date !== undefined && { date: data.date }),
         ...(data.categoryId !== undefined && { categoryId: data.categoryId }),
+        ...(data.installmentTotal !== undefined && { installmentTotal: data.installmentTotal }),
+        ...(data.installmentCurrent !== undefined && { installmentCurrent: data.installmentCurrent }),
       },
       include: { category: true },
     });

@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Pencil, Trash2 } from "lucide-react";
+import { Pencil, Trash2, CreditCard } from "lucide-react";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import { ExpenseWithCategory } from "@/types";
 import { EmptyState } from "@/components/shared/empty-state";
@@ -78,7 +78,17 @@ export function ExpenseTable({ expenses, onDeleted }: ExpenseTableProps) {
                   key={expense.id}
                   className="transition-colors hover:bg-muted/50"
                 >
-                  <TableCell className="font-medium">{expense.title}</TableCell>
+                  <TableCell className="font-medium">
+                    <div className="flex items-center gap-2">
+                      {expense.installmentTotal && (
+                        <span className="flex h-6 min-w-6 items-center justify-center rounded-md bg-primary/10 px-1.5 text-[10px] font-bold text-primary">
+                          <CreditCard className="mr-0.5 h-3 w-3" />
+                          {expense.installmentCurrent}/{expense.installmentTotal}
+                        </span>
+                      )}
+                      <span className="truncate">{expense.title}</span>
+                    </div>
+                  </TableCell>
                   <TableCell>
                     {expense.category ? (
                       <Badge
@@ -137,7 +147,15 @@ export function ExpenseTable({ expenses, onDeleted }: ExpenseTableProps) {
           >
             <div className="flex items-start justify-between gap-2">
               <div className="min-w-0">
-                <p className="font-medium">{expense.title}</p>
+                <div className="flex items-center gap-2">
+                  {expense.installmentTotal && (
+                    <span className="flex h-6 min-w-6 items-center justify-center rounded-md bg-primary/10 px-1.5 text-[10px] font-bold text-primary">
+                      <CreditCard className="mr-0.5 h-3 w-3" />
+                      {expense.installmentCurrent}/{expense.installmentTotal}
+                    </span>
+                  )}
+                  <p className="font-medium">{expense.title}</p>
+                </div>
                 <p className="mt-1 text-sm text-muted-foreground">
                   {formatDate(expense.date)}
                 </p>

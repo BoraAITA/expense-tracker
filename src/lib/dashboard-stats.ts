@@ -40,6 +40,8 @@ export function serializeExpenseWithCategory(expense: {
   categoryId: string | null;
   createdAt: Date;
   category?: { id: string; name: string; color: string } | null;
+  installmentTotal?: number | null;
+  installmentCurrent?: number | null;
 }) {
   return {
     id: expense.id,
@@ -51,6 +53,8 @@ export function serializeExpenseWithCategory(expense: {
     categoryId: expense.categoryId,
     category: expense.category ?? null,
     createdAt: expense.createdAt.toISOString(),
+    installmentTotal: expense.installmentTotal ?? null,
+    installmentCurrent: expense.installmentCurrent ?? null,
   };
 }
 
