@@ -19,8 +19,9 @@ export default withAuth(
         const isApiAuth = req.nextUrl.pathname.startsWith("/api/auth");
         const isHealth = req.nextUrl.pathname === "/api/health";
         const isCron = req.nextUrl.pathname.startsWith("/api/cron");
+        const isSeed = req.nextUrl.pathname === "/api/seed";
 
-        if (isApiAuth || isHealth || isCron) return true;
+        if (isApiAuth || isHealth || isCron || isSeed) return true;
         if (isLoginPage) return true;
         return !!token;
       },
