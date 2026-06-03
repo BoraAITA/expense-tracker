@@ -33,9 +33,9 @@ COPY --from=builder /app/node_modules/prisma ./node_modules/prisma
 COPY --from=builder /app/node_modules/tsx ./node_modules/tsx
 COPY --from=builder /app/node_modules/bcryptjs ./node_modules/bcryptjs
 COPY --from=builder /app/package.json ./package.json
-COPY scripts/docker-entrypoint.sh ./docker-entrypoint.sh
+COPY --from=builder /app/scripts ./scripts
 
-RUN chmod +x docker-entrypoint.sh && chown -R nextjs:nodejs /app
+RUN chmod +x scripts/docker-entrypoint.sh && chown -R nextjs:nodejs /app
 USER nextjs
 EXPOSE 3000
-ENTRYPOINT ["./docker-entrypoint.sh"]
+ENTRYPOINT ["./scripts/docker-entrypoint.sh"]
