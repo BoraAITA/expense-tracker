@@ -14,12 +14,24 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { useState, useEffect } from "react";
-import { Bell, Mail, User, Save, Lock, Eye, EyeOff } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
+import {
+  Bell,
+  Mail,
+  User,
+  Save,
+  Lock,
+  Eye,
+  EyeOff,
+  Download,
+  Upload,
+  Database,
+} from "lucide-react";
 
 export default function SettingsPage() {
   const { data: session, update } = useSession();
   const { toast } = useToast();
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Profile state
   const [name, setName] = useState(session?.user?.name || "");
@@ -40,6 +52,11 @@ export default function SettingsPage() {
   const [savingNotification, setSavingNotification] = useState(false);
   const [loadingSettings, setLoadingSettings] = useState(true);
 
+  // Import/Export state
+  const [exporting, setExporting] = useState(false);
+  const [importing, setImporting] = useState(false);
+  const [importFile, setImportFile] = useState<File | null>(null);
+
   useEffect(() => {
     setName(session?.user?.name || "");
     setEmail(session?.user?.email || "");
@@ -57,7 +74,7 @@ export default function SettingsPage() {
       .catch(() => setLoadingSettings(false));
   }, []);
 
-  // Save profile (name + email)
+  // Save profile
   async function handleSaveProfile() {
     if (!name.trim()) {
       toast({ title: "İsim gerekli", variant: "destructive" });
@@ -76,15 +93,10 @@ export default function SettingsPage() {
       });
       const data = await res.json();
       if (res.ok) {
-        // Update the session so UI reflects changes
         await update({ name: data.name, email: data.email });
         toast({ title: "Profil güncellendi" });
       } else {
-        toast({
-          title: "Güncellenemedi",
-          description: data.error,
-          variant: "destructive",
-        });
+        toast({ title: "Güncellenemedi", description: data.error, variant: "destructive" });
       }
     } catch {
       toast({ title: "Hata oluştu", variant: "destructive" });
@@ -125,11 +137,7 @@ export default function SettingsPage() {
         setConfirmPassword("");
         toast({ title: "Şifre güncellendi" });
       } else {
-        toast({
-          title: "Şifre güncellenemedi",
-          description: data.error,
-          variant: "destructive",
-        });
+        toast({ title: "Şifre güncellenemedi", description: data.error, variant: "destructive" });
       }
     } catch {
       toast({ title: "Hata oluştu", variant: "destructive" });
@@ -153,11 +161,7 @@ export default function SettingsPage() {
         toast({ title: "Bildirim e-postası kaydedildi" });
         setNotificationEmail(data.notificationEmail);
       } else {
-        toast({
-          title: "Kaydedilemedi",
-          description: data.error,
-          variant: "destructive",
-        });
+        toast({ title: "Kaydedilemedi", description: data.error, variant: "destructive" });
       }
     } catch {
       toast({ title: "Hata oluştu", variant: "destructive" });
@@ -180,11 +184,7 @@ export default function SettingsPage() {
       if (data.success) {
         toast({ title: "Test e-postası gönderildi" });
       } else {
-        toast({
-          title: "E-posta gönderilemedi",
-          description: data.error,
-          variant: "destructive",
-        });
+        toast({ title: "E-posta gönderilemedi", description: data.error, variant: "destructive" });
       }
     } catch {
       toast({ title: "Hata oluştu", variant: "destructive" });
@@ -193,99 +193,128 @@ export default function SettingsPage() {
     }
   }
 
+  // Export backup
+  async function handleExport() {
+    setExporting(true);
+    try {
+      const res = await fetch("/api/export");
+      const data = await res.json();
+      if (!res.ok) {
+        toast({ title: "Dışa aktarma başarısız", description: data.error, variant: "destructive" });
+        return;
+      }
+      // Decode base64 and download as zip
+      const byteCharacters = atob(data.data);
+      const byteNumbers = new Array(byteCharacters.length);
+      for (let i = 0; i < byteCharacters.length; i++) {
+        byteNumbers[i] = byteCharacters.charCodeAt(i);
+      }
+      const byteArray = new Uint8Array(byteNumbers);
+      const blob = new Blob([byteArray], { type: "application/zip" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = data.filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      toast({
+        title: "Yedek indirildi",
+        description: `${data.stats.categories} kategori, ${data.stats.expenses} gider, ${data.stats.subscriptions} abonelik, ${data.stats.images} resim`,
+      });
+    } catch {
+      toast({ title: "Hata oluştu", variant: "destructive" });
+    } finally {
+      setExporting(false);
+    }
+  }
+
+  // Import backup
+  async function handleImport() {
+    if (!importFile) return;
+    setImporting(true);
+    try {
+      const arrayBuffer = await importFile.arrayBuffer();
+      const base64 = btoa(
+        new Uint8Array(arrayBuffer).reduce((data, byte) => data + String.fromCharCode(byte), "")
+      );
+      const res = await fetch("/api/import", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ data: base64 }),
+      });
+      const result = await res.json();
+      if (!res.ok) {
+        toast({ title: "İçe aktarma başarısız", description: result.error, variant: "destructive" });
+        return;
+      }
+      toast({
+        title: "İçe aktarma başarılı",
+        description: `${result.imported.categories} kategori, ${result.imported.expenses} gider, ${result.imported.subscriptions} abonelik, ${result.imported.images} resim`,
+      });
+      setImportFile(null);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    } catch {
+      toast({ title: "Hata oluştu", variant: "destructive" });
+    } finally {
+      setImporting(false);
+    }
+  }
+
   return (
     <>
       <Header title="Ayarlar" description="Hesap ve sistem ayarları" />
       <div className="flex-1 space-y-6 p-4 sm:p-6">
-        {/* PROFILE CARD */}
+        {/* PROFILE */}
         <Card className="shadow-sm">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <User className="h-5 w-5" />
               Profil Bilgileri
             </CardTitle>
-            <CardDescription>
-              Kullanıcı adınızı ve e-posta adresinizi düzenleyin
-            </CardDescription>
+            <CardDescription>Kullanıcı adınızı ve e-posta adresinizi düzenleyin</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="flex items-center gap-3 mb-4">
-              <Badge className="text-xs">
-                {session?.user?.role || "USER"}
-              </Badge>
+              <Badge className="text-xs">{session?.user?.role || "USER"}</Badge>
               <span className="text-xs text-muted-foreground">
-                @
-                {session?.user?.name?.toLowerCase().replace(/\s+/g, "") ||
-                  "kullanici"}
+                @{session?.user?.name?.toLowerCase().replace(/\s+/g, "") || "kullanici"}
               </span>
             </div>
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
                 <Label htmlFor="profile-name">İsim</Label>
-                <Input
-                  id="profile-name"
-                  className="min-h-11"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder="Adınız"
-                />
+                <Input id="profile-name" className="min-h-11" value={name} onChange={(e) => setName(e.target.value)} placeholder="Adınız" />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="profile-email">E-posta</Label>
-                <Input
-                  id="profile-email"
-                  type="email"
-                  className="min-h-11"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="ornek@email.com"
-                />
+                <Input id="profile-email" type="email" className="min-h-11" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="ornek@email.com" />
               </div>
             </div>
-            <Button
-              onClick={handleSaveProfile}
-              disabled={savingProfile}
-              className="min-h-11"
-            >
+            <Button onClick={handleSaveProfile} disabled={savingProfile} className="min-h-11">
               <Save className="mr-2 h-4 w-4" />
               {savingProfile ? "Kaydediliyor..." : "Profili Kaydet"}
             </Button>
           </CardContent>
         </Card>
 
-        {/* PASSWORD CARD */}
+        {/* PASSWORD */}
         <Card className="shadow-sm">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Lock className="h-5 w-5" />
               Şifre Değiştir
             </CardTitle>
-            <CardDescription>
-              Hesap güvenliğiniz için şifrenizi düzenleyin
-            </CardDescription>
+            <CardDescription>Hesap güvenliğiniz için şifrenizi düzenleyin</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="current-password">Mevcut Şifre</Label>
               <div className="relative">
-                <Input
-                  id="current-password"
-                  type={showCurrentPassword ? "text" : "password"}
-                  className="min-h-11 pr-10"
-                  value={currentPassword}
-                  onChange={(e) => setCurrentPassword(e.target.value)}
-                  placeholder="••••••••"
-                />
-                <button
-                  type="button"
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                  onClick={() => setShowCurrentPassword(!showCurrentPassword)}
-                >
-                  {showCurrentPassword ? (
-                    <EyeOff className="h-4 w-4" />
-                  ) : (
-                    <Eye className="h-4 w-4" />
-                  )}
+                <Input id="current-password" type={showCurrentPassword ? "text" : "password"} className="min-h-11 pr-10" value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} placeholder="••••••••" />
+                <button type="button" className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground" onClick={() => setShowCurrentPassword(!showCurrentPassword)}>
+                  {showCurrentPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
               </div>
             </div>
@@ -293,129 +322,135 @@ export default function SettingsPage() {
               <div className="space-y-2">
                 <Label htmlFor="new-password">Yeni Şifre</Label>
                 <div className="relative">
-                  <Input
-                    id="new-password"
-                    type={showNewPassword ? "text" : "password"}
-                    className="min-h-11 pr-10"
-                    value={newPassword}
-                    onChange={(e) => setNewPassword(e.target.value)}
-                    placeholder="••••••••"
-                  />
-                  <button
-                    type="button"
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                    onClick={() => setShowNewPassword(!showNewPassword)}
-                  >
-                    {showNewPassword ? (
-                      <EyeOff className="h-4 w-4" />
-                    ) : (
-                      <Eye className="h-4 w-4" />
-                    )}
+                  <Input id="new-password" type={showNewPassword ? "text" : "password"} className="min-h-11 pr-10" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} placeholder="••••••••" />
+                  <button type="button" className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground" onClick={() => setShowNewPassword(!showNewPassword)}>
+                    {showNewPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                   </button>
                 </div>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="confirm-password">Şifre Tekrar</Label>
-                <Input
-                  id="confirm-password"
-                  type={showNewPassword ? "text" : "password"}
-                  className="min-h-11"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  placeholder="••••••••"
-                />
+                <Input id="confirm-password" type={showNewPassword ? "text" : "password"} className="min-h-11" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} placeholder="••••••••" />
               </div>
             </div>
-            <p className="text-xs text-muted-foreground">
-              Yeni şifre en az 6 karakter olmalıdır.
-            </p>
-            <Button
-              onClick={handleChangePassword}
-              disabled={savingPassword || !currentPassword || !newPassword}
-              variant="outline"
-              className="min-h-11"
-            >
+            <p className="text-xs text-muted-foreground">Yeni şifre en az 6 karakter olmalıdır.</p>
+            <Button onClick={handleChangePassword} disabled={savingPassword || !currentPassword || !newPassword} variant="outline" className="min-h-11">
               <Lock className="mr-2 h-4 w-4" />
               {savingPassword ? "Güncelleniyor..." : "Şifreyi Güncelle"}
             </Button>
           </CardContent>
         </Card>
 
-        {/* NOTIFICATION EMAIL CARD */}
+        {/* NOTIFICATION EMAIL */}
         <Card className="shadow-sm">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Bell className="h-5 w-5" />
               Bildirim E-postası
             </CardTitle>
-            <CardDescription>
-              Abonelik hatırlatma bildirimlerinin gönderileceği e-posta adresi
-            </CardDescription>
+            <CardDescription>Abonelik hatırlatma bildirimlerinin gönderileceği e-posta adresi</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="notification-email">Bildirim e-posta adresi</Label>
-              <Input
-                id="notification-email"
-                type="email"
-                value={notificationEmail}
-                onChange={(e) => setNotificationEmail(e.target.value)}
-                placeholder={defaultEmail || "ornek@email.com"}
-                disabled={loadingSettings}
-                className="min-h-11"
-              />
-              {defaultEmail && (
-                <p className="text-xs text-muted-foreground">
-                  Varsayılan: {defaultEmail}
-                </p>
-              )}
+              <Input id="notification-email" type="email" value={notificationEmail} onChange={(e) => setNotificationEmail(e.target.value)} placeholder={defaultEmail || "ornek@email.com"} disabled={loadingSettings} className="min-h-11" />
+              {defaultEmail && <p className="text-xs text-muted-foreground">Varsayılan: {defaultEmail}</p>}
             </div>
-            <Button
-              onClick={handleSaveNotificationEmail}
-              disabled={savingNotification || !notificationEmail || loadingSettings}
-              className="min-h-11"
-            >
+            <Button onClick={handleSaveNotificationEmail} disabled={savingNotification || !notificationEmail || loadingSettings} className="min-h-11">
               <Save className="mr-2 h-4 w-4" />
               {savingNotification ? "Kaydediliyor..." : "Kaydet"}
             </Button>
           </CardContent>
         </Card>
 
-        {/* SMTP TEST CARD */}
+        {/* SMTP TEST */}
         <Card className="shadow-sm">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Mail className="h-5 w-5" />
               SMTP Test
             </CardTitle>
-            <CardDescription>
-              Abonelik hatırlatma e-postaları için SMTP bağlantısını test edin
-            </CardDescription>
+            <CardDescription>Abonelik hatırlatma e-postaları için SMTP bağlantısını test edin</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="test-email">Test e-posta adresi</Label>
-              <Input
-                id="test-email"
-                type="email"
-                value={testEmail}
-                onChange={(e) => setTestEmail(e.target.value)}
-                placeholder="ornek@email.com"
-                className="min-h-11"
-              />
+              <Input id="test-email" type="email" value={testEmail} onChange={(e) => setTestEmail(e.target.value)} placeholder="ornek@email.com" className="min-h-11" />
             </div>
-            <Button
-              onClick={handleTestEmail}
-              disabled={sending || !testEmail}
-              variant="outline"
-              className="min-h-11"
-            >
+            <Button onClick={handleTestEmail} disabled={sending || !testEmail} variant="outline" className="min-h-11">
               <Mail className="mr-2 h-4 w-4" />
               {sending ? "Gönderiliyor..." : "Test E-postası Gönder"}
             </Button>
+            <p className="text-xs text-muted-foreground">SMTP: smtp.gmail.com:587</p>
+          </CardContent>
+        </Card>
+
+        {/* IMPORT / EXPORT */}
+        <Card className="shadow-sm">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Database className="h-5 w-5" />
+              Veri Yedekleme
+            </CardTitle>
+            <CardDescription>
+              Tüm verilerinizi (.zip) dışa aktarın veya geri yükleyin. Kullanıcı şifreleri hariç her şey dahildir (kategori, gider, abonelik, ayarlar, resimler).
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid gap-4 sm:grid-cols-2">
+              {/* EXPORT */}
+              <div className="rounded-lg border p-4 space-y-3">
+                <div className="flex items-center gap-2">
+                  <Download className="h-4 w-4 text-green-600" />
+                  <h4 className="text-sm font-medium">Dışa Aktar (Export)</h4>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Tüm verileri + resimleri .zip olarak indirin
+                </p>
+                <Button onClick={handleExport} disabled={exporting} className="min-h-11 w-full" variant="outline">
+                  <Download className="mr-2 h-4 w-4" />
+                  {exporting ? "Oluşturuluyor..." : "ZIP İndir"}
+                </Button>
+              </div>
+
+              {/* IMPORT */}
+              <div className="rounded-lg border p-4 space-y-3">
+                <div className="flex items-center gap-2">
+                  <Upload className="h-4 w-4 text-blue-600" />
+                  <h4 className="text-sm font-medium">İçe Aktar (Import)</h4>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Daha önce indirdiğiniz .zip dosyasını geri yükleyin
+                </p>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".zip"
+                  className="hidden"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) setImportFile(file);
+                  }}
+                />
+                <Button
+                  variant="outline"
+                  className="min-h-11 w-full"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={importing}
+                >
+                  <Upload className="mr-2 h-4 w-4" />
+                  {importFile ? importFile.name : "ZIP Dosyası Seç"}
+                </Button>
+                {importFile && (
+                  <Button onClick={handleImport} disabled={importing} className="min-h-11 w-full">
+                    <Database className="mr-2 h-4 w-4" />
+                    {importing ? "İçe Aktarılıyor..." : "İçe Aktar"}
+                  </Button>
+                )}
+              </div>
+            </div>
             <p className="text-xs text-muted-foreground">
-              SMTP: smtp.gmail.com:587 — Cron endpoint: POST
-              /api/cron/subscription-reminders
+              ⚠️ Import mevcut verilerin üzerine yazacaktır. Import sonrası sayfayı yenileyin.
             </p>
           </CardContent>
         </Card>
