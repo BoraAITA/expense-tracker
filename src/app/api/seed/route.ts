@@ -1,15 +1,39 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
+import { exec } from "child_process";
+import { promisify } from "util";
+
+const execAsync = promisify(exec);
 
 export async function GET() {
   try {
-    // Create admin user
+    // First, try to run migrations
+    try {
+      await execAsync("npx prisma migrate deploy", {
+        env: { ...process.env },
+        timeout: 60000,
+      });
+    } catch (migErr) {
+      console.log("Migration attempt result:", migErr);
+    }
+
+    // Also try db push as fallback
+    try {
+      await execAsync("npx prisma db push --skip-generate", {
+        env: { ...process.env },
+        timeout: 60000,
+      });
+    } catch (pushErr) {
+      console.log("DB push attempt result:", pushErr);
+    }
+
+    // Now create admin user
     const passwordHash = await bcrypt.hash("admin123", 10);
 
     const admin = await prisma.user.upsert({
       where: { username: "admin" },
-      update: { passwordHash }, // Update password hash in case it changed
+      update: { passwordHash },
       create: {
         username: "admin",
         passwordHash,
