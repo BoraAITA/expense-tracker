@@ -16,11 +16,20 @@ export async function POST(request: NextRequest) {
     const formData = await request.formData();
     const file = formData.get("file");
 
-    if (!file || !(file instanceof File)) {
+    if (!file) {
       return NextResponse.json({ error: "Dosya gerekli" }, { status: 400 });
     }
 
-    if (!ALLOWED_TYPES.includes(file.type)) {
+    // Check if it's a Blob (File extends Blob in Next.js standalone)
+    if (!(file instanceof Blob)) {
+      return NextResponse.json({ error: "Dosya gerekli" }, { status: 400 });
+    }
+
+    // Get file metadata from the Blob
+    const fileName = (file as File).name || "upload.png";
+    const fileType = file.type || "image/png";
+
+    if (!ALLOWED_TYPES.includes(fileType)) {
       return NextResponse.json(
         { error: "Sadece JPEG, PNG, WebP veya GIF yüklenebilir" },
         { status: 400 }
@@ -46,7 +55,7 @@ export async function POST(request: NextRequest) {
       "image/webp": "image/webp",
       "image/gif": "image/gif",
     };
-    const mimeType = mimeMap[file.type] || "image/png";
+    const mimeType = mimeMap[fileType] || "image/png";
 
     const dataUrl = `data:${mimeType};base64,${base64}`;
 
