@@ -21,12 +21,15 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if it's a Blob (File extends Blob in Next.js standalone)
+    // Use Blob check instead of File to avoid "File is not defined" in standalone
     if (!(file instanceof Blob)) {
       return NextResponse.json({ error: "Dosya gerekli" }, { status: 400 });
     }
 
     // Get file metadata from the Blob
-    const fileName = (file as File).name || "upload.png";
+    // Note: accessing .name on a Blob may not work in standalone, so use safe access
+    let fileName = "upload.png";
+    try { fileName = (file as any).name || "upload.png"; } catch {}
     const fileType = file.type || "image/png";
 
     if (!ALLOWED_TYPES.includes(fileType)) {
