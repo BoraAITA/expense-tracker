@@ -37,6 +37,9 @@ export function SubscriptionLogo({
     .toUpperCase();
 
   if (logoUrl) {
+    // Data URLs use native <img>, external URLs use next/image
+    const isDataUrl = logoUrl.startsWith("data:");
+    
     return (
       <div
         className={cn(
@@ -45,14 +48,23 @@ export function SubscriptionLogo({
           className
         )}
       >
-        <Image
-          src={logoUrl}
-          alt={name}
-          fill
-          className="object-cover"
-          sizes="48px"
-          unoptimized
-        />
+        {isDataUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={logoUrl}
+            alt={name}
+            className="h-full w-full object-cover"
+          />
+        ) : (
+          <Image
+            src={logoUrl}
+            alt={name}
+            fill
+            className="object-cover"
+            sizes="48px"
+            unoptimized
+          />
+        )}
       </div>
     );
   }

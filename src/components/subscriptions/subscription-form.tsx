@@ -163,13 +163,22 @@ export function SubscriptionForm({
             <div className="flex items-center gap-4">
               {logoUrl ? (
                 <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-lg border shadow-sm">
-                  <Image
-                    src={logoUrl}
-                    alt="Logo önizleme"
-                    fill
-                    className="object-cover"
-                    unoptimized
-                  />
+                  {logoUrl.startsWith("data:") ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={logoUrl}
+                      alt="Logo önizleme"
+                      className="h-full w-full object-cover"
+                    />
+                  ) : (
+                    <Image
+                      src={logoUrl}
+                      alt="Logo önizleme"
+                      fill
+                      className="object-cover"
+                      unoptimized
+                    />
+                  )}
                 </div>
               ) : (
                 <SubscriptionLogo name={name || "Abonelik"} size="lg" />

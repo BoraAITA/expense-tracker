@@ -1,6 +1,4 @@
 import { NextRequest, NextResponse } from "next/server";
-import { writeFile, mkdir } from "fs/promises";
-import path from "path";
 import { requireAuth } from "@/lib/api-auth";
 
 const MAX_SIZE = 2 * 1024 * 1024; // 2MB
@@ -32,23 +30,23 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const ext = file.name.split(".").pop()?.toLowerCase() || "png";
-    const safeExt = ["jpg", "jpeg", "png", "webp", "gif"].includes(ext)
-      ? ext === "jpeg"
-        ? "jpg"
-        : ext
-      : "png";
-    const filename = `${Date.now()}-${Math.random().toString(36).slice(2, 9)}.${safeExt}`;
-    const uploadsDir = path.join(process.cwd(), "public", "uploads");
-
-    await mkdir(uploadsDir, { recursive: true });
-
+    // Convert to base64 data URL for persistent storage
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
-    await writeFile(path.join(uploadsDir, filename), buffer);
-
-    const url = `/uploads/${filename}`;
-    return NextResponse.json({ url });
+    const base64 = buffer.toString("base64");
+    
+    // Determine MIME type
+    const mimeMap: Record<string, string> = {
+      "image/jpeg": "image/jpeg",
+      "image/png": "image/png",
+      "image/webp": "image/webp",
+      "image/gif": "image/gif",
+    };
+    const mimeType = mimeMap[file.type] || "image/png";
+    
+    const dataUrl = `data:${mimeType};base64,${base64}`;
+    
+    return NextResponse.json({ url: dataUrl });
   } catch {
     return NextResponse.json({ error: "Yükleme başarısız" }, { status: 500 });
   }
