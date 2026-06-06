@@ -16,7 +16,8 @@ import { tr } from "date-fns/locale";
 
 async function aggregateExpensesByCurrency(
   userId: string,
-  dateFilter?: { gte: Date; lte: Date }
+  dateFilter?: { gte: Date; lte: Date },
+  divideInstallments = false
 ) {
   const totals = emptyCurrencyTotals();
   const expenses = await prisma.expense.findMany({
@@ -29,8 +30,8 @@ async function aggregateExpensesByCurrency(
 
   for (const e of expenses) {
     const rawAmount = decimalToNumber(e.amount);
-    // Taksitli giderlerde aylık tutarı hesapla
-    const amount = e.installmentTotal && e.installmentTotal > 1
+    // Sadece aylık hesaplamalarda taksit bölmesi uygula
+    const amount = divideInstallments && e.installmentTotal && e.installmentTotal > 1
       ? rawAmount / e.installmentTotal
       : rawAmount;
     addToCurrencyTotals(
@@ -57,7 +58,7 @@ export async function GET() {
       aggregateExpensesByCurrency(userId, {
         gte: monthStart,
         lte: monthEnd,
-      }),
+      }, true),
       prisma.subscription.findMany({
         where: { userId, status: "ACTIVE" },
       }),
@@ -95,7 +96,7 @@ export async function GET() {
     const byCurrency = await aggregateExpensesByCurrency(userId, {
       gte: start,
       lte: end,
-    });
+    }, true);
     monthlyChart.push({
       month: format(d, "MMM yyyy", { locale: tr }),
       byCurrency,
