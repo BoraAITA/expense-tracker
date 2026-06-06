@@ -10,10 +10,14 @@ export const subscriptionCreateSchema = z.object({
   currency: currencyEnum.default("TRY"),
   logoUrl: z
     .string()
-    .max(500)
-    .refine((v) => v.startsWith("/uploads/") || v.startsWith("http"), {
-      message: "Geçersiz logo URL",
-    })
+    .max(5000000)
+    .refine(
+      (v) =>
+        v.startsWith("/uploads/") ||
+        v.startsWith("http") ||
+        v.startsWith("data:"),
+      { message: "Geçersiz logo URL" }
+    )
     .optional()
     .nullable(),
   interval: intervalEnum.default("MONTHLY"),
