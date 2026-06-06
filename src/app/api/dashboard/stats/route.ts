@@ -24,14 +24,19 @@ async function aggregateExpensesByCurrency(
       userId,
       ...(dateFilter ? { date: dateFilter } : {}),
     },
-    select: { amount: true, currency: true },
+    select: { amount: true, currency: true, installmentTotal: true },
   });
 
   for (const e of expenses) {
+    const rawAmount = decimalToNumber(e.amount);
+    // Taksitli giderlerde aylık tutarı hesapla
+    const amount = e.installmentTotal && e.installmentTotal > 1
+      ? rawAmount / e.installmentTotal
+      : rawAmount;
     addToCurrencyTotals(
       totals,
       e.currency as CurrencyCode,
-      decimalToNumber(e.amount)
+      amount
     );
   }
   return totals;
