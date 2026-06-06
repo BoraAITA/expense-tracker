@@ -14,22 +14,16 @@ export async function POST(request: NextRequest) {
     }
 
     const formData = await request.formData();
-    const file = formData.get("file");
+    const raw = formData.get("file");
 
-    if (!file) {
+    if (!raw || typeof raw === "string") {
       return NextResponse.json({ error: "Dosya gerekli" }, { status: 400 });
     }
 
-    // Check if it's a Blob (File extends Blob in Next.js standalone)
-    // Use Blob check instead of File to avoid "File is not defined" in standalone
-    if (!(file instanceof Blob)) {
-      return NextResponse.json({ error: "Dosya gerekli" }, { status: 400 });
-    }
+    // At this point, raw is a Blob (File extends Blob)
+    // We use Blob interface only — no File reference needed
+    const file: Blob = raw;
 
-    // Get file metadata from the Blob
-    // Note: accessing .name on a Blob may not work in standalone, so use safe access
-    let fileName = "upload.png";
-    try { fileName = (file as any).name || "upload.png"; } catch {}
     const fileType = file.type || "image/png";
 
     if (!ALLOWED_TYPES.includes(fileType)) {
@@ -47,11 +41,10 @@ export async function POST(request: NextRequest) {
     }
 
     // Convert to base64 data URL for persistent storage
-    const bytes = await file.arrayBuffer();
-    const buffer = Buffer.from(bytes);
+    const arrayBuffer = await file.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
     const base64 = buffer.toString("base64");
 
-    // Determine MIME type
     const mimeMap: Record<string, string> = {
       "image/jpeg": "image/jpeg",
       "image/png": "image/png",
